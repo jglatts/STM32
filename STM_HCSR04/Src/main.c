@@ -83,23 +83,6 @@ unsigned long pulseIn(uint16_t gpioPin, GPIO_TypeDef *gpiox, uint8_t state, unsi
 	return ((width * 10 + 16)/72);
 }
 
-
-uint32_t hcsr04_read (void)
-{
-	int local_time=0;
-	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);  // pull the TRIG pin HIGH
-	HAL_Delay(2);  // wait for 2 us
-	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_SET);  // pull the TRIG pin HIGH
-	HAL_Delay(10);  // wait for 10 us
-	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);  // pull the TRIG pin low
-	while (!(HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin))); { // wait for the ECHO pin to go high
-	    while (HAL_GPIO_ReadPin(ECHO_GPIO_Port, ECHO_Pin)) {   // while the pin is high
-		    local_time++;   // measure time for which the pin is high
-		    HAL_Delay(1);
-	     }
-	}
-	return local_time*2;
-}
 /* USER CODE END 0 */
 
 /**
@@ -147,10 +130,10 @@ int main(void)
 		HAL_Delay(10);  // wait for 10 us
 		HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);  // pull the TRIG pin low
 		unsigned long response = pulseIn(ECHO_Pin, ECHO_GPIO_Port, 1, 1000);
-		distance = (response*170)/10000;
-		if (distance <= 10) {
+		distance = (response*170)/10000; // distance in CM	
+		if (distance <= 1) {
 			HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
-			HAL_Delay(100);
+			HAL_Delay(50);
 		} else {
 			HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
 		}
