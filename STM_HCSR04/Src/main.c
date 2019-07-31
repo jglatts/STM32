@@ -130,7 +130,8 @@ int main(void)
 		HAL_Delay(10);  // wait for 10 us
 		HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, GPIO_PIN_RESET);  // pull the TRIG pin low
 		unsigned long response = pulseIn(ECHO_Pin, ECHO_GPIO_Port, 1, 1000);
-		distance = (response*170)/10000; // distance in CM	
+		// distance = (response*170)/10000; // distance in CM
+		distance = ((response*170)/10000) * 10; // distance in MM
 		if (distance <= 1) {
 			HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
 			HAL_Delay(50);
