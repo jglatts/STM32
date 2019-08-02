@@ -106,7 +106,7 @@ int main(void)
   HAL_ADC_Start(&hadc2);
   while (1)
   {
-	  buzz_off();
+      buzz_off();
       if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
       {
     	  g_ADCValue = HAL_ADC_GetValue(&hadc1);
