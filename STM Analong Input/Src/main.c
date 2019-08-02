@@ -28,7 +28,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -42,8 +43,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-ADC_HandleTypeDef hadc2;
 uint32_t g_ADCValue, y_ADCValue;
 int  g_MeasurementNumber;
 /* USER CODE BEGIN PV */
@@ -56,7 +55,9 @@ static void MX_GPIO_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
-
+int check_val(uint32_t);
+void buzz_on();
+void buzz_off();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -105,28 +106,32 @@ int main(void)
   HAL_ADC_Start(&hadc2);
   while (1)
   {
+	  buzz_off();
       if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK)
       {
     	  g_ADCValue = HAL_ADC_GetValue(&hadc1);
     	  y_ADCValue = HAL_ADC_GetValue(&hadc2);
     	  // next step = getting accurate reads from BOTH ADCs
-          if (g_ADCValue < 300 || g_ADCValue > 3000)
-          {
-        	  HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
-        	  HAL_Delay(100);
-          }
-          if (y_ADCValue < 300 || y_ADCValue > 3000)
-          {
-        	  HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
-        	  HAL_Delay(100);
-          }
-          else
-          {
-        	  HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
-          }
+          if (check_val(g_ADCValue) || check_val(y_ADCValue)) buzz_on();
       }
   }
   /* USER CODE END 3 */
+}
+
+int check_val(uint32_t val)
+{
+	return (val < 300 || val > 3000);
+}
+
+void buzz_on()
+{
+	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);	
+	HAL_Delay(100);
+}
+
+void buzz_off()
+{
+	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
 }
 
 /**
