@@ -136,13 +136,13 @@ void buzz_off()
 void motor_on()
 {
 	// trying a relay now - cahmon
-	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOB, BUZZ_Pin|MOTOR_Pin, GPIO_PIN_SET);
 	HAL_Delay(100);
 }
 
 void motor_off()
 {
-	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOB, BUZZ_Pin|MOTOR_Pin, GPIO_PIN_RESET);
 }
 
 /**
