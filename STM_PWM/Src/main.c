@@ -114,6 +114,7 @@ int main(void)
   while (1)
   {
 	  	// PWM is working
+	        // PB6 is configed. as output pin for PWM
   }
   /* USER CODE END 3 */
 }
