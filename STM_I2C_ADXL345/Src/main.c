@@ -34,6 +34,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define adxl_address 0x53<<1	// DEVID shifted left 1 bit per HAL_i2c.h
+#define X_VAL -5
+#define Y_VAL -50
+#define Y_VAL_RIGHT 50
+#define Z_VAL 70
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +50,8 @@ I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
 uint8_t data_rec[6];
-uint8_t chipid=0;
+uint8_t chipid = 0;
+int8_t count = 0;
 int16_t x,y,z;
 float xg, yg, zg;
 char x_char[3], y_char[3], z_char[3];
@@ -92,10 +97,18 @@ void adxl_init(void)
 
 void motor_on(void)
 {
-	// Move Clock-Wise
+	// Move ClockWise
 	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
-	HAL_Delay(100);
+	HAL_Delay(250);
+}
+
+void motor_on_CCW(void)
+{
+	// Move Counter-ClockWise
+	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
+	HAL_Delay(250);
 }
 
 void motor_off(void)
@@ -103,6 +116,31 @@ void motor_off(void)
 	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin|BUZZ_Pin, GPIO_PIN_RESET);
 	//HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_RESET);
 	//HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
+}
+
+int check_z_val(void)
+{
+	return (z < Z_VAL);
+}
+
+int check_y_val(void)
+{
+	return (y < Y_VAL);
+}
+
+int check_y_val_right(void)
+{
+	return (y > Y_VAL_RIGHT);
+}
+
+int check_x_val(void)
+{
+	return (x < X_VAL);
+}
+
+void reset_count(void)
+{
+	count = 0;
 }
 /* USER CODE END 0 */
 
@@ -113,7 +151,6 @@ void motor_off(void)
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
   
 
@@ -154,8 +191,10 @@ int main(void)
 	  yg = y * .0078;
 	  zg = z * .0078;
 
-	  // improve motor control
-	  ((x < -5) && (y < 0)) ? motor_on() : motor_off();
+	  if(check_y_val()) motor_on();
+	  if(check_y_val_right()) motor_on_CCW();
+	  motor_off();	// always turn motor off when done
+
   }
   /* USER CODE END 3 */
 }
@@ -257,7 +296,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* Configure I2C Pins */
-  GPIO_InitStruct_1.Pin = SCL_Pin|SDA_Pin;
+  GPIO_InitStruct_1.Pin = SCL_Pin|SDA_Pin;	// SCL - PB8 | SDA - PB9
   GPIO_InitStruct_1.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct_1.Pull = GPIO_NOPULL;
   GPIO_InitStruct_1.Speed = GPIO_SPEED_FREQ_LOW;
@@ -290,10 +329,7 @@ void Error_Handler(void)
   */
 void assert_failed(uint8_t *file, uint32_t line)
 { 
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
+     printf("Wrong parameters value: file %s on line %d\r\n", file, line);
 }
 #endif /* USE_FULL_ASSERT */
 
