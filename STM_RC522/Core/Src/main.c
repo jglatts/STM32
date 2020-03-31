@@ -58,54 +58,19 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART1_UART_Init(void);
+
 /* USER CODE BEGIN PFP */
 TM_MFRC522_Status_t TM_MFRC522_Read(uint8_t, uint8_t*);
 void TM_MFRC522_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
+
 /* USER CODE BEGIN 0 */
-
 TM_MFRC522_Status_t status;
+uint8_t  CardID[5];
+unsigned char NewData[5];
 
-FATFS fs;  // file system
-FIL fil;  // file
-FRESULT fresult;  // to store the result
-char buffer[1024]; // to store data
-
-UINT br, bw;   // file read/write count
-
-/* capacity related variables */
-FATFS *pfs;
-DWORD fre_clust;
-RC522_DATA rc522;
-uint32_t total, free_space;
-uint8_t* rfid;
-uint8_t check;
-uint8_t card_data;
-
-/* to send the data to the uart */
-void send_uart (char *string)
-{
-	uint8_t len = strlen (string);
-	HAL_UART_Transmit(&huart1, (uint8_t *) string, len, 2000);  // transmit in blocking mode
-}
-
-/* to find the size of data in the buffer */
-int bufsize (char *buf)
-{
-	int i=0;
-	while (*buf++ != '\0') i++;
-	return i;
-}
-
-void bufclear (void)  // clear buffer
-{
-	for (int i=0; i<1024; i++)
-	{
-		buffer[i] = '\0';
-	}
-}
 /* USER CODE END 0 */
 
 /**
@@ -115,7 +80,7 @@ void bufclear (void)  // clear buffer
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  uint8_t CardID[5], NewData[5];
+  uint8_t check;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -155,7 +120,6 @@ int main(void)
       if (status == MI_OK) {
           //CardID is valid
     	  check = 1;
-    	  card_data = TM_MFRC522_GetID(NewData);
       } else check = 0;
     /* USER CODE END WHILE */
   }
