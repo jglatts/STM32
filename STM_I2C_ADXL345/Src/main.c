@@ -1,72 +1,144 @@
-/* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
-
-/* Includes ------------------------------------------------------------------*/
+ * 	ADXL345 Program Code
+ * 	Make sure the ADXL board has CS tied high
+ */
 #include "main.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
 #define adxl_address 0x53<<1	// DEVID shifted left 1 bit per HAL_i2c.h
 #define X_VAL -5
 #define Y_VAL -50
 #define Y_VAL_RIGHT 50
 #define Z_VAL 70
-/* USER CODE END PD */
 
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
+HAL_StatusTypeDef status;
 I2C_HandleTypeDef hi2c1;
 
-/* USER CODE BEGIN PV */
 uint8_t data_rec[6];
 uint8_t chipid = 0;
 int8_t count = 0;
 int16_t x,y,z;
 float xg, yg, zg;
 char x_char[3], y_char[3], z_char[3];
-/* USER CODE END PV */
 
-/* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
-/* USER CODE BEGIN PFP */
+void Sys_Init();
+void SystemClock_Config(void);
+void adxl_write(uint8_t, uint8_t);
+void adxl_read_values(uint8_t);
+void adxl_read_address(uint8_t);
+void ADXL_Init(void);
+void led_on(void);
+void led_off(void);
+void reset_count(void);
+void run_adxl();
+int check_z_val(void);
+int check_y_val(void);
+int check_y_value_right(void);
+int check_x_val(void);
 
-/* USER CODE END PFP */
+int main(void)
+{
+  Sys_Init();
+  status = HAL_I2C_IsDeviceReady(&hi2c1, adxl_address, 10, 500);
+  while (1)
+  {
+	  run_adxl();
+  }
+}
 
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
+void Sys_Init(void)
+{
+  HAL_Init();
+  SystemClock_Config();
+  MX_GPIO_Init();
+  MX_I2C1_Init();
+  ADXL_Init();
+}
+
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL2;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_I2C1_Init(void)
+{
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 400000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  HAL_GPIO_WritePin(LED_BUILT_IN_GPIO_Port, LED_BUILT_IN_Pin, GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = LED_BUILT_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_BUILT_IN_GPIO_Port, &GPIO_InitStruct);
+}
+
+void ADXL_Init(void)
+{
+	adxl_read_address(0x00); // read the DEVID
+	adxl_write(0x31, 0x01);  // data_format range= +- 4g
+	adxl_write(0x2d, 0x00);  // reset all bits
+	adxl_write(0x2d, 0x08);  // power_cntl measure and wake up 8hz
+}
+
+void run_adxl()
+{
+    adxl_read_values(0x32);
+    x = ((data_rec[1]<<8)|data_rec[0]);
+    y = ((data_rec[3]<<8)|data_rec[2]);
+    z = ((data_rec[5]<<8)|data_rec[4]);
+    xg = x * .0078;
+    yg = y * .0078;
+    zg = z * .0078;
+    check_x_val() ? led_on() : led_off();
+    //if(check_x_val()) led_on();
+    //if(check_y_val_right()) led_off();
+    //count++;
+}
+
 void adxl_write(uint8_t reg, uint8_t value)
 {
 	uint8_t data[2];
@@ -77,45 +149,23 @@ void adxl_write(uint8_t reg, uint8_t value)
 
 void adxl_read_values(uint8_t reg)
 {
-	HAL_I2C_Mem_Read(&hi2c1, adxl_address, reg, 1, (uint8_t *)data_rec, 6, 100);
+	HAL_I2C_Mem_Read(&hi2c1, adxl_address, reg, 1, data_rec, 6, 100);
 }
 
 void adxl_read_address(uint8_t reg)
 {
+	// take a look at chipid during debug
 	HAL_I2C_Mem_Read(&hi2c1, adxl_address, reg, 1, &chipid, 1, 100);
 }
 
-void adxl_init(void)
+void led_on(void)
 {
-	adxl_read_address(0x00); // read the DEVID
-
-	adxl_write(0x31, 0x01);  // data_format range= +- 4g
-	adxl_write(0x2d, 0x00);  // reset all bits
-	adxl_write(0x2d, 0x08);  // power_cntl measure and wake up 8hz
-
+	HAL_GPIO_WritePin(LED_BUILT_IN_GPIO_Port, LED_BUILT_IN_Pin, GPIO_PIN_RESET);
 }
 
-void motor_on(void)
+void led_off(void)
 {
-	// Move ClockWise
-	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_RESET);
-	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_SET);
-	HAL_Delay(250);
-}
-
-void motor_on_CCW(void)
-{
-	// Move Counter-ClockWise
-	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
-	HAL_Delay(250);
-}
-
-void motor_off(void)
-{
-	HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin|BUZZ_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(MOTOR_GPIO_Port, MOTOR_Pin, GPIO_PIN_RESET);
-	//HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(LED_BUILT_IN_GPIO_Port, LED_BUILT_IN_Pin, GPIO_PIN_SET);
 }
 
 int check_z_val(void)
@@ -142,181 +192,10 @@ void reset_count(void)
 {
 	count = 0;
 }
-/* USER CODE END 0 */
 
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
-int main(void)
-{
-  /* USER CODE BEGIN 1 */
-  /* USER CODE END 1 */
-  
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_I2C1_Init();
-  /* USER CODE BEGIN 2 */
-  adxl_init();
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while(1)
-  {
-	  // working !!!!! :)
-	  adxl_read_values (0x32);
-	  x = ((data_rec[1]<<8)|data_rec[0]);
-	  y = ((data_rec[3]<<8)|data_rec[2]);
-	  z = ((data_rec[5]<<8)|data_rec[4]);
-
-	  xg = x * .0078;
-	  yg = y * .0078;
-	  zg = z * .0078;
-
-	  if(check_y_val()) motor_on();
-	  if(check_y_val_right()) motor_on_CCW();
-	  motor_off();	// always turn motor off when done
-
-  }
-  /* USER CODE END 3 */
-}
-
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-void SystemClock_Config(void)
-{
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /** Initializes the CPU, AHB and APB busses clocks 
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /** Initializes the CPU, AHB and APB busses clocks 
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 400000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  GPIO_InitTypeDef GPIO_InitStruct_1 = {0};
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(BUZZ_GPIO_Port, BUZZ_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : BUZZ_Pin */
-  GPIO_InitStruct.Pin = BUZZ_Pin|MOTOR_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /* Configure I2C Pins */
-  GPIO_InitStruct_1.Pin = SCL_Pin|SDA_Pin;	// SCL - PB8 | SDA - PB9
-  GPIO_InitStruct_1.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct_1.Pull = GPIO_NOPULL;
-  GPIO_InitStruct_1.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct_1);
-}
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
 
-  /* USER CODE END Error_Handler_Debug */
 }
 
 #ifdef  USE_FULL_ASSERT
@@ -328,8 +207,9 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(uint8_t *file, uint32_t line)
-{ 
-     printf("Wrong parameters value: file %s on line %d\r\n", file, line);
+{
+  /* USER CODE BEGIN 6 */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
 
