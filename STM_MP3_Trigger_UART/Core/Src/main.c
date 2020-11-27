@@ -1,7 +1,3 @@
-/**
- * 	ADXL345 Program Code
- * 	Make sure the ADXL board has CS tied high
- */
 #include "main.h"
 
 #define adxl_address 0x53<<1	// DEVID shifted left 1 bit per HAL_i2c.h
@@ -9,6 +5,8 @@
 #define Y_VAL -50
 #define Y_VAL_RIGHT 50
 #define Z_VAL 70
+#define NO_DELAY 0
+#define STD_DELAY 5
 
 HAL_StatusTypeDef i2c_status;
 HAL_UART_StateTypeDef uart_state;
@@ -16,7 +14,9 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart1;
 
 uint8_t data_rec[6];
+uint8_t trig_status_buff[30];
 uint8_t chipid = 0;
+uint8_t trig_msg = 0;
 int8_t count = 0;
 int16_t x,y,z;
 float xg, yg, zg;
@@ -25,6 +25,13 @@ char x_char[3], y_char[3], z_char[3];
 static void MX_GPIO_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
+void get_trigger_status();
+void wait_for_song_finish();
+void uart_write(uint8_t, uint8_t, uint16_t);
+int check_z_val(void);
+int check_y_val(void);
+int check_y_value_right(void);
+int check_x_val(void);
 void Sys_Init();
 void SystemClock_Config(void);
 void adxl_write(uint8_t, uint8_t);
@@ -36,21 +43,18 @@ void led_off(void);
 void reset_count(void);
 void run_adxl(void);
 void play_track(void);
-void uart_write(void);
-int check_z_val(void);
-int check_y_val(void);
-int check_y_value_right(void);
-int check_x_val(void);
 
 int main(void)
 {
   Sys_Init();
   i2c_status = HAL_I2C_IsDeviceReady(&hi2c1, adxl_address, 10, 500);
   uart_state = HAL_UART_GetState(&huart1);
-  uart_write();
+  uart_write('t', 3, STD_DELAY);
+  get_trigger_status();
+  wait_for_song_finish();
   while (1)
   {
-	  run_adxl();
+	  //run_adxl();
   }
   return 0;
 }
@@ -234,13 +238,27 @@ void play_track(void)
 	HAL_GPIO_WritePin(TRIG_GPIO_Port, TRIG_Pin, SET);
 }
 
-void uart_write(void)
+void uart_write(uint8_t cmd, uint8_t track, uint16_t delay)
 {
-	uint8_t cmd = 't';
-	uint8_t track = 3;
 	HAL_UART_Transmit(&huart1, &cmd, sizeof(cmd), HAL_MAX_DELAY);
 	HAL_UART_Transmit(&huart1, &track, sizeof(track), HAL_MAX_DELAY);
-	HAL_Delay(5);
+	HAL_Delay(delay);
+}
+
+void get_trigger_status()
+{
+	uart_write('S', '1', NO_DELAY);
+	HAL_UART_Receive(&huart1, trig_status_buff, sizeof(trig_status_buff), 50);
+}
+
+void wait_for_song_finish()
+{
+	// setup an interrupt for this
+	while (trig_msg == 0)
+	{
+		HAL_UART_Receive(&huart1, &trig_msg, sizeof(trig_msg), 50);
+	}
+
 }
 
 void reset_count(void)
@@ -267,5 +285,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
