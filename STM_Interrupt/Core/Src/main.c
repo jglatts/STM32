@@ -20,7 +20,7 @@ int main(void)
   */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-    if(GPIO_Pin == EXTI_Pin) // If The INT Source Is EXTI Line7 (A7 Pin)
+    if(GPIO_Pin == EXTI_Pin) // If The IT Source Is EXTI Line7 (A7 Pin)
     {
     	HAL_GPIO_TogglePin(Out_GPIO_Port, Out_Pin); // Toggle The Output (LED) Pin
     }
@@ -81,7 +81,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PA7 */
   GPIO_InitStruct.Pin = GPIO_PIN_7;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
